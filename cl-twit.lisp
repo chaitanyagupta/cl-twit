@@ -29,8 +29,9 @@
 (cl:in-package #:cl-twit)
 
 ;;; TODOs:
-;;;; TODO: (messages) -- Not Working at all
+;;;; TODO: Convenience fn for sent messages
 ;;;; TODO: Documentation
+;;;; TODO: Add favorites, etc.
 ;;;; TODO: Should we parse-status for the user (?)
 ;;;; TODO: Epoch for twitter's Unix time (?)
 ;;;; TODO: Better return type handling for twitter-methods (?)
@@ -437,7 +438,8 @@
   (user-timeline-ids (make-hash-table :test #'equalp))
   (replies-id nil)
   (messages-id nil)
-  (statuses (make-hash-table :test #'equalp)))
+  (session-statuses (make-hash-table :test #'equalp))
+  (session-messages (make-hash-table :test #'equalp)))
 
 (defun forget-state ()
   (setf *state* (make-session-state)))
@@ -451,53 +453,77 @@
      ,@body))
 
 (defun store-status (status)
-  (setf (gethash (status-id status) (statuses *state*)) status))
+  (setf (gethash (status-id status) (session-statuses *state*)) status))
 
 (defun store-statuses (statuses)
   (dolist (status statuses statuses)
     (store-status status)))
 
+(defun store-message (message)
+  (setf (gethash (message-id message) (session-messages *state*)) message))
+
+(defun store-messages (messages)
+  (dolist (message messages messages)
+    (store-message message)))
+
 ;;; Status management helpers
 
-(defun get-newest-status-id (statuses)
-  (when statuses
-    (apply #'max (mapcar (compose #'parse-integer #'status-id) statuses))))
+(defun get-newest-id (items)
+  (when items
+    (apply #'max (mapcar (compose #'parse-integer #'id) items))))
 
-(defun display-status (stream status initialp finalp)
+(defgeneric display-item (x stream n initialp finalp)
+  (:documentation "Generic display function"))
+
+(defmethod display-item ((x null) stream n initialp finalp)
+  (format stream "~&No items to display.~%"))
+
+(defmethod display-item ((status status) stream n initialp finalp)
   (when initialp
     (format stream "~&Status stream starts: ~%~%"))
-  (when status
-    (format stream "~&~A (~A): ~A~%"
-            (user-name (status-user status))
-            (user-screen-name (status-user status))
-            (status-text status))
-    (format stream "~&~A~:[~; (truncated)~] At ~A from ~A~%~%"
-            (status-id status)
-            (status-truncated status)
-            (status-created-at status)
-            (status-source status)))
+  (format stream "~&~A (~A): ~A~%"
+          (user-name (status-user status))
+          (user-screen-name (status-user status))
+          (status-text status))
+  (format stream "~&~A~:[~; (truncated)~] at ~A from ~A~%~%"
+          (status-id status)
+          (status-truncated status)
+          (status-created-at status)
+          (status-source status))
   (when finalp
     (format stream "~&Status stream ends.~%")))
 
-(defvar *default-dislpay-fn* 'display-status)
+(defmethod display-item ((message message) stream n initialp finalp)
+  (when initialp
+    (format stream "~&Message stream starts: ~%~%"))
+  (format stream "~&~A to ~A: ~A~%"
+          (message-sender-screen-name message)
+          (message-recipient-screen-name message)
+          (message-text message))
+  (format stream "~&~A at ~A~%~%"
+          (message-id message)
+          (message-created-at message))
+  (when finalp
+    (format stream "~&Message stream ends.~%")))
 
-(defun display-statuses (statuses display-fn stream)
-  (labels ((!display-statuses (statuses &optional (initialp t))
+(defun display-items (items stream &aux (n -1))
+  (labels ((!display-items (items &optional (initialp t))
              (cond
-               ((null statuses)
-                (funcall display-fn stream nil t t))
-               ((rest statuses)
-                (funcall display-fn stream (first statuses) initialp nil)
-                (!display-statuses (rest statuses) nil))
-               (t (funcall display-fn stream (first statuses) initialp t)))))
-    (!display-statuses statuses)
-    statuses))
+               ((null items)
+                (display-item nil stream 0 t t))
+               ((rest items)
+                (display-item (first items) stream (incf n) initialp nil)
+                (!display-items (rest items) nil))
+               (t
+                (display-item (first items) stream (incf n) initialp t)))))
+    (!display-items items)
+    items))
 
 (defun update (fmt &rest args)
   (store-status (m-update (apply #'format nil fmt args))))
 
 (defun find-status (id)
-  (or (gethash id (statuses *state*))
+  (or (gethash id (session-statuses *state*))
       (store-status (ignore-errors (m-show id)))))
 
 (defun reply-to (status-id fmt &rest args)
@@ -516,7 +542,7 @@
   ;; Shouldn't we use the created_at date instead?
   (let ((request-newest-id (gensym))
         (place-id (gensym)))
-    `(let* ((,request-newest-id (get-newest-status-id ,statuses))
+    `(let* ((,request-newest-id (get-newest-id ,statuses))
             (,place-id ,place))
        (when (and ,request-newest-id
                   (or (null ,place-id)
@@ -527,7 +553,6 @@
                  (since-id (friends-timeline-id *state*) since-id-p)
                  count
                  page
-                 (display-fn *default-dislpay-fn*)
                  (stream *standard-output*))
   (let ((statuses (m-friends-timeline
                    :since-id (unless page since-id)
@@ -535,7 +560,7 @@
                    :page page)))
     (when (or since-id (not since-id-p))
       (update-newest-id statuses (friends-timeline-id *state*)))
-    (display-statuses statuses display-fn stream)
+    (display-items statuses stream)
     (store-statuses statuses)))
 
 (defun user-timeline (user
@@ -543,7 +568,6 @@
                       (since-id (gethash user (user-timeline-ids *state*)) since-id-p)
                       count
                       page
-                      (display-fn *default-dislpay-fn*)
                       (stream *standard-output*))
   (let ((statuses (m-user-timeline
                    :id (if (eql user :me)
@@ -554,32 +578,30 @@
                    :page page)))
     (when (or since-id (not since-id-p))
       (update-newest-id statuses (gethash user (user-timeline-ids *state*))))
-    (display-statuses statuses display-fn stream)
+    (display-items statuses stream)
     (store-statuses statuses)))
 
 (defun @replies (&key
                  (since-id (replies-id *state*) since-id-p)
                  page
-                 (display-fn *default-dislpay-fn*)
                  (stream *standard-output*))
   (let ((statuses (m-replies :since-id (unless page since-id)
                              :page page)))
     (when (or since-id (not since-id-p))
       (update-newest-id statuses (replies-id *state*)))
-    (display-statuses statuses display-fn stream)
+    (display-items statuses stream)
     (store-statuses statuses)))
 
 (defun messages (&key
                  (since-id (messages-id *state*) since-id-p)
                  page
-                 (display-fn *default-dislpay-fn*)
                  (stream *standard-output*))
   (let ((messages (m-messages :since-id (unless page since-id)
                               :page page)))
     (when (or since-id (not since-id-p))
-      (update-newest-id messages (messages-id *state*))
-      (display-statuses messages display-fn stream)
-      messages)))
+      (update-newest-id messages (messages-id *state*)))
+    (display-items messages stream)
+    (store-messages messages)))
 
 ;;; TinyURL-ize
 ;;; Using the very simple TinyURL API

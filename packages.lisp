@@ -128,6 +128,8 @@
    #:find-status
    #:reply-to
    #:@reply-to
+   #:display-item
+   #:display-items
    #:timeline
    #:user-timeline
    #:@replies

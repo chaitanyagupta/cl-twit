@@ -43,7 +43,10 @@
 
 (defmethod print-object ((x status) stream)
   (print-unreadable-object (x stream :type t :identity t)
-    (format stream "~A (~A) " (status-id x) (user-screen-name (status-user x)))
+    (format stream "~A (~A) "
+            (status-id x)
+            (and (status-user x)
+                 (user-screen-name (status-user x))))
     (let ((text (status-text x)))
       (format stream "~S"
               (if (< (length text) 10)
@@ -132,4 +135,11 @@
              :initarg :deadline)
    (text :reader xml-error-text
          :initarg :text)))
+
+;;; An 'id' method for our objects
+
+(defgeneric id (x)
+  (:method ((x status)) (status-id x))
+  (:method ((x user)) (user-id x))
+  (:method ((x message)) (message-id x)))
 
