@@ -30,7 +30,6 @@
 
 ;;; TODOs:
 ;;;; TODO: Documentation
-;;;; TODO: Message limit warning
 ;;;; TODO: Methods to be tested: update- (?)
 ;;;; TODO: Easily switch context between profiles (?)
 ;;;; TODO: Should we parse-status for the user (?)
@@ -194,6 +193,8 @@
                  :url url
                  :body body)))))
 
+(defparameter *max-text-length* 140)
+
 ;;; Methods
 
 (defun params-list (&rest pairs)
@@ -279,9 +280,10 @@
     (status
      &key
      in-reply-to-status-id)
-  (assert (not (null status))
-          (status)
-          "Give a non-null STATUS.")
+  (assert (and (not (null status)) (<= *max-text-length* (length status)))
+          nil
+          "STATUS must be non-NIL and its length must not be greater than ~A."
+          *max-text-length*)
   (let* ((body (twitter-request "/statuses/update.xml"
                              :method :post)))
     (parse-status (safe-xml-root body))))
@@ -320,7 +322,7 @@
      (id :parameter nil)
      email)
   (assert (or id email)
-          (id email)
+          nil
           "Provide atleast one of id or email.")
   (parse-extended-user
    (safe-xml-root (twitter-request (optional-id-path id "/users/show")))))
@@ -344,9 +346,13 @@
 (def-twitter-method m-messages-new
     (user
      text)
+  (assert (and (not (null text)) (<= *max-text-length* (length text)))
+          nil
+          "TEXT must be non-NIL and its length must not be greater than ~A."
+          *max-text-length*)
   (parse-message
    (safe-xml-root (twitter-request "/direct_messages/new.xml"
-                                :method :post))))
+                                   :method :post))))
 (def-twitter-method m-messages-destroy
     ((id :parameter nil))
   (parse-message
@@ -614,7 +620,10 @@
 
 (defun find-status (id)
   (or (gethash id (session-statuses *state*))
-      (store-status (ignore-errors (m-show id)))))
+      (progn
+        (cerror "Couldn't find status with ID locally. Ask twitter?"
+                'twitter-error)
+        (store-status (ignore-errors (m-show id))))))
 
 (defun reply-to (status-id fmt &rest args)
   (store-status
