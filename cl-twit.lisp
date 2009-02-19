@@ -29,9 +29,10 @@
 (cl:in-package #:cl-twit)
 
 ;;; TODOs:
-;;;; TODO: Convenience fn for sent messages
 ;;;; TODO: Documentation
-;;;; TODO: Add favorites, etc.
+;;;; TODO: Message limit warning
+;;;; TODO: Methods to be tested: update- (?)
+;;;; TODO: Easily switch context between profiles (?)
 ;;;; TODO: Should we parse-status for the user (?)
 ;;;; TODO: Epoch for twitter's Unix time (?)
 ;;;; TODO: Better return type handling for twitter-methods (?)
@@ -313,6 +314,7 @@
      page)
   (parse-users
    (safe-xml-root (twitter-request (optional-id-path id "/statuses/followers")))))
+
 (def-twitter-method m-user-show
     (&key
      (id :parameter nil)
@@ -370,8 +372,9 @@
 (def-twitter-method m-friendship-exists
     (user-a
      user-b)
-  (stp:string-value
-   (safe-xml-root (twitter-request "/friendships/exists.xml"))))
+  (boolify
+   (stp:string-value
+    (safe-xml-root (twitter-request "/friendships/exists.xml")))))
 
 ;;; Social graph methods
 
@@ -393,6 +396,40 @@
   (parse-user
    (safe-xml-root (twitter-request "/account/verify_credentials.xml"))))
 
+(def-twitter-method m-end-session ()
+  (twitter-request "/account/end_session.xml"
+                   :method :post))
+
+(def-twitter-method m-update-delivery-device
+    (device)
+  (assert (member device (list "sms" "im" "none") :test #'equal))
+  (parse-user
+   (safe-xml-root (twitter-request "/account/update_delivery_device.xml"
+                                   :method :post))))
+
+(def-twitter-method m-update-profile-colors
+    (&key
+     profile-background-color
+     profile-text-color
+     profile-link-color
+     profile-sidebar-fill-color
+     profile-sidebar-border-color)
+  (parse-extended-user
+   (safe-xml-root (twitter-request "/account/update_profile_colors.xml"
+                                   :method :post))))
+
+(def-twitter-method m-update-profile-image
+    (image)
+  (parse-extended-user
+   (safe-xml-root (twitter-request "/account/update_profile_image.xml"
+                                   :method :post))))
+
+(def-twitter-method m-update-profile-background-image
+    (image)
+  (parse-extended-user
+   (safe-xml-root (twitter-request "/account/update_profile_background_image.xml"
+                                   :method :post))))
+
 (def-twitter-method m-rate-limit-status ()
   (parse-rate-limit
    (safe-xml-root (twitter-request "/account/rate_limit_status.xml"))))
@@ -408,6 +445,55 @@
    (safe-xml-root (twitter-request "/account/update_profile.xml"
                                    :method :post))))
 
+;;; Favorite methods
+
+(def-twitter-method m-favorites
+    (&key
+     (id :parameter nil)
+     page)
+  (parse-statuses
+   (safe-xml-root (twitter-request (optional-id-path id "/favorites")))))
+
+(def-twitter-method m-favorites-create
+    ((id :parameter nil))
+  (parse-status
+   (safe-xml-root (twitter-request (format nil "/favorites/create/~A.xml" id)
+                                   :method :post))))
+
+(def-twitter-method m-favorites-destroy
+    ((id :parameter nil))
+  (parse-status
+   (safe-xml-root (twitter-request (format nil "/favorites/destroy/~A.xml" id)
+                                   :method :delete))))
+
+;;; Notification methods
+
+(def-twitter-method m-follow
+    ((id :parameter nil))
+  (parse-user
+   (safe-xml-root (twitter-request (format nil "/notifications/follow/~A.xml" id)
+                                   :method :post))))
+
+(def-twitter-method m-leave
+    ((id :parameter nil))
+  (parse-user
+   (safe-xml-root (twitter-request (format nil "/notifications/leave/~A.xml" id)
+                                   :method :post))))
+
+;;; Block methods
+
+(def-twitter-method m-block-create
+    ((id :parameter nil))
+  (parse-user
+   (safe-xml-root (twitter-request (format nil "/blocks/create/~A.xml" id)
+                                   :method :post))))
+
+(def-twitter-method m-block-destroy
+    ((id :parameter nil))
+  (parse-user
+   (safe-xml-root (twitter-request (format nil "/blocks/destroy/~A.xml" id)
+                                   :method :post))))
+
 ;;; Help methods
 
 (def-twitter-method m-test ()
@@ -418,28 +504,32 @@
 
 (defvar *state*)
 
-(defun login (username password)
-  (prog1
-      (let ((*username* username)
-            (*password* password))
-        (m-verify-credentials))
-    (setf *username* username
-          *password* password
-          *state* (make-session-state))))
-
-(defun logout ()
-  (setf *username* nil
-        *password* nil
-        *state* nil))
-
 (defstruct (session-state
              (:conc-name nil))
   (friends-timeline-id nil)
   (user-timeline-ids (make-hash-table :test #'equalp))
   (replies-id nil)
   (messages-id nil)
+  (sent-messages-id nil)
   (session-statuses (make-hash-table :test #'equalp))
   (session-messages (make-hash-table :test #'equalp)))
+
+(defvar *user* nil)
+
+(defun login (username password)
+  (let ((user (let ((*username* username)
+                    (*password* password))
+                (m-verify-credentials))))
+    (setf *username* username
+          *password* password
+          *state* (make-session-state)
+          *user* user)))
+
+(defun logout ()
+  (setf *username* nil
+        *password* nil
+        *state* nil
+        *user* nil))
 
 (defun forget-state ()
   (setf *state* (make-session-state)))
@@ -537,6 +627,9 @@
                      fmt)))
     (reply-to status-id (apply #'format nil fmt args))))
 
+(defun send-message (user fmt &rest args)
+  (m-messages-new user (apply #'format nil fmt args)))
+
 (defmacro update-newest-id (statuses place)
   ;; FIXME: We are broke if the ids don't remain numeric.
   ;; Shouldn't we use the created_at date instead?
@@ -550,7 +643,7 @@
          (setf ,place ,request-newest-id)))))
 
 (defun timeline (&key
-                 (since-id (friends-timeline-id *state*) since-id-p)
+                 (since-id (friends-timeline-id *state*))
                  count
                  page
                  (stream *standard-output*))
@@ -558,14 +651,12 @@
                    :since-id (unless page since-id)
                    :count count
                    :page page)))
-    (when (or since-id (not since-id-p))
-      (update-newest-id statuses (friends-timeline-id *state*)))
+    (update-newest-id statuses (friends-timeline-id *state*))
     (display-items statuses stream)
     (store-statuses statuses)))
 
-(defun user-timeline (user
-                      &key
-                      (since-id (gethash user (user-timeline-ids *state*)) since-id-p)
+(defun user-timeline (user &key
+                      (since-id (gethash user (user-timeline-ids *state*)))
                       count
                       page
                       (stream *standard-output*))
@@ -576,30 +667,37 @@
                    :since-id (unless page since-id)
                    :count count
                    :page page)))
-    (when (or since-id (not since-id-p))
-      (update-newest-id statuses (gethash user (user-timeline-ids *state*))))
+    (update-newest-id statuses (gethash user (user-timeline-ids *state*)))
     (display-items statuses stream)
     (store-statuses statuses)))
 
 (defun @replies (&key
-                 (since-id (replies-id *state*) since-id-p)
+                 (since-id (replies-id *state*))
                  page
                  (stream *standard-output*))
   (let ((statuses (m-replies :since-id (unless page since-id)
                              :page page)))
-    (when (or since-id (not since-id-p))
-      (update-newest-id statuses (replies-id *state*)))
+    (update-newest-id statuses (replies-id *state*))
     (display-items statuses stream)
     (store-statuses statuses)))
 
 (defun messages (&key
-                 (since-id (messages-id *state*) since-id-p)
+                 (since-id (messages-id *state*))
                  page
                  (stream *standard-output*))
   (let ((messages (m-messages :since-id (unless page since-id)
                               :page page)))
-    (when (or since-id (not since-id-p))
-      (update-newest-id messages (messages-id *state*)))
+    (update-newest-id messages (messages-id *state*))
+    (display-items messages stream)
+    (store-messages messages)))
+
+(defun sent-messages (&key
+                      (since-id (sent-messages-id *state*))
+                      page
+                      (stream *standard-output*))
+  (let ((messages (m-messages-sent :since-id (unless page since-id)
+                                   :page page)))
+    (update-newest-id messages (sent-messages-id *state*))
     (display-items messages stream)
     (store-messages messages)))
 

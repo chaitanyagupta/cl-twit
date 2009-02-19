@@ -117,10 +117,23 @@
    #:m-graph-friends
    #:m-graph-followers
    #:m-verify-credentials
+   #:m-end-session
+   #:m-update-delivery-device
+   #:m-update-profile-colors
+   #:m-update-profile-image
+   #:m-update-profile-background-image
    #:m-rate-limit-status
    #:m-update-profile
-   #:m-help
+   #:m-favorites
+   #:m-favorites-create
+   #:m-favorites-destroy
+   #:m-follow
+   #:m-leave
+   #:m-block-create
+   #:m-block-destroy
+   #:m-test
    ;; Our convenience operators for interactive use
+   #:*user*
    #:login
    #:logout
    #:forget-state
@@ -128,12 +141,14 @@
    #:find-status
    #:reply-to
    #:@reply-to
+   #:send-message
    #:display-item
    #:display-items
    #:timeline
    #:user-timeline
    #:@replies
    #:messages
+   #:sent-messages
    #:with-session
    ;; TinyURL API client
    #:get-tinyurl))
