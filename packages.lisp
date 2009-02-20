@@ -137,6 +137,7 @@
    #:login
    #:logout
    #:forget-state
+   #:with-session
    #:update
    #:find-status
    #:reply-to
@@ -149,7 +150,6 @@
    #:@replies
    #:messages
    #:sent-messages
-   #:with-session
    ;; TinyURL API client
    #:get-tinyurl))
 

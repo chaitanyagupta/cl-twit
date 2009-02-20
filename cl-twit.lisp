@@ -30,6 +30,8 @@
 
 ;;; TODOs:
 ;;;; TODO: Documentation
+;;;; TODO: .cl-twit.lisp
+;;;; TODO: More info in errors
 ;;;; TODO: Methods to be tested: update- (?)
 ;;;; TODO: Easily switch context between profiles (?)
 ;;;; TODO: Should we parse-status for the user (?)
@@ -280,7 +282,7 @@
     (status
      &key
      in-reply-to-status-id)
-  (assert (and (not (null status)) (<= *max-text-length* (length status)))
+  (assert (and (not (null status)) (<= (length status) *max-text-length*))
           nil
           "STATUS must be non-NIL and its length must not be greater than ~A."
           *max-text-length*)
@@ -346,7 +348,7 @@
 (def-twitter-method m-messages-new
     (user
      text)
-  (assert (and (not (null text)) (<= *max-text-length* (length text)))
+  (assert (and (not (null text)) (<= (length text) *max-text-length*))
           nil
           "TEXT must be non-NIL and its length must not be greater than ~A."
           *max-text-length*)
@@ -520,9 +522,13 @@
   (session-statuses (make-hash-table :test #'equalp))
   (session-messages (make-hash-table :test #'equalp)))
 
-(defvar *user* nil)
+(defvar *user* nil
+  "Bound to the USER object of the current, authenticated user.")
 
 (defun login (username password)
+  "Authenticate the given USERNAME and PASSWORD using the
+verify_credentials. Sets *USER* to this user. Also clears any existing
+session state."
   (let ((user (let ((*username* username)
                     (*password* password))
                 (m-verify-credentials))))
@@ -532,19 +538,26 @@
           *user* user)))
 
 (defun logout ()
+  "Clear user information and session state."
   (setf *username* nil
         *password* nil
         *state* nil
         *user* nil))
 
 (defun forget-state ()
+  "Just clear the existing session state. Don't clear user
+authentication information."
   (setf *state* (make-session-state)))
 
-(defmacro with-session ((username password &key (login t)) &body body)
+(defmacro with-session ((username password &key (loginp t)) &body body)
+  "Authenticate the USERNAME and PASSWORD, and set up a fresh session
+state for this user. If LOGINP is NIL, then don't automatically
+call (LOGIN)."
   `(let ((*username* ,username)
          (*password* ,password)
-         (*state* (make-session-state)))
-     , (when login
+         (*state* (make-session-state))
+         (*user* nil))
+     , (when loginp
          `(login *username* *password*))
      ,@body))
 
@@ -569,7 +582,15 @@
     (apply #'max (mapcar (compose #'parse-integer #'id) items))))
 
 (defgeneric display-item (x stream n initialp finalp)
-  (:documentation "Generic display function"))
+  (:documentation "Generic display function for cl-twit objects.
+
+X is the object to be displayed.
+STREAM is the output stream.
+N is the zero-indexed number of the item a list, if any.
+INITIALP indicates that X is the first item of the list.
+FINALP indicates that X is the last item of the list.
+
+Must be specialized for NULL, STATUS and MESSAGE."))
 
 (defmethod display-item ((x null) stream n initialp finalp)
   (format stream "~&No items to display.~%"))
@@ -603,6 +624,7 @@
     (format stream "~&Message stream ends.~%")))
 
 (defun display-items (items stream &aux (n -1))
+  "Displays a list of ITEMS using DISPLAY-ITEM to output STREAM."
   (labels ((!display-items (items &optional (initialp t))
              (cond
                ((null items)
@@ -616,9 +638,14 @@
     items))
 
 (defun update (fmt &rest args)
+  "Update your status. FMT is a FORMAT string, and ARGS are its
+corresponding arguments."
   (store-status (m-update (apply #'format nil fmt args))))
 
 (defun find-status (id)
+  "Find status with ID. If it is not present locally, throws a
+CERROR. If the user chooses to continue, get the status from twitter."
+  (setf id (format nil "~A" id))
   (or (gethash id (session-statuses *state*))
       (progn
         (cerror "Couldn't find status with ID locally. Ask twitter?"
@@ -626,17 +653,26 @@
         (store-status (ignore-errors (m-show id))))))
 
 (defun reply-to (status-id fmt &rest args)
+  "Send a reply to a particular status with STATUS-ID. FMT and ARGS
+are the format-control string and args."
   (store-status
    (m-update (apply #'format nil fmt args)
              :in-reply-to-status-id status-id)))
 
 (defun @reply-to (status-id fmt &rest args)
+  "Send a reply to a particular status with STATUS-ID. FMT and ARGS
+are the format-control string and args.
+
+This function prepends the @username of the status's sender to the
+final text."
   (let ((fmt (format nil "@~A ~A"
                      (user-screen-name (status-user (find-status status-id)))
                      fmt)))
     (reply-to status-id (apply #'format nil fmt args))))
 
 (defun send-message (user fmt &rest args)
+  "Send a direct message to USER (screenname or id) with
+format-controlled string FMT and ARGS."
   (m-messages-new user (apply #'format nil fmt args)))
 
 (defmacro update-newest-id (statuses place)
@@ -656,6 +692,14 @@
                  count
                  page
                  (stream *standard-output*))
+  "Retrieve the authenticating user's home timeline. Equivalent of /home on twitter.
+
+SINCE-ID should be the id of a status.
+COUNT (must be < 200) is the number of statuses to retrieve.
+PAGE is the page number to retrieve.
+STREAM should be the output stream (default *STANDARD-OUTPUT*).
+
+SINCE-ID is not checked when PAGE is non-NIL."
   (let ((statuses (m-friends-timeline
                    :since-id (unless page since-id)
                    :count count
@@ -669,6 +713,16 @@
                       count
                       page
                       (stream *standard-output*))
+  "Retrieve the USER's timeline. Equivalent to /username on
+  twitter. If USER eql's :ME, get the timeline for authenticating
+  user.
+
+SINCE-ID should be the id of a status.
+COUNT (must be < 200) is the number of statuses to retrieve.
+PAGE is the page number to retrieve.
+STREAM should be the output stream (default *STANDARD-OUTPUT*).
+
+SINCE-ID is not checked when PAGE is non-NIL."
   (let ((statuses (m-user-timeline
                    :id (if (eql user :me)
                            *username*
@@ -684,6 +738,13 @@
                  (since-id (replies-id *state*))
                  page
                  (stream *standard-output*))
+  "Retrieve any @REPLIES for the authenticating user.
+
+SINCE-ID should be the id of a status.
+COUNT (must be < 200) is the number of statuses to retrieve.
+STREAM should be the output stream (default *STANDARD-OUTPUT*).
+
+SINCE-ID is not checked when PAGE is non-NIL."
   (let ((statuses (m-replies :since-id (unless page since-id)
                              :page page)))
     (update-newest-id statuses (replies-id *state*))
@@ -694,6 +755,13 @@
                  (since-id (messages-id *state*))
                  page
                  (stream *standard-output*))
+  "Retrieve direct messages sent to the authenticating user.
+
+SINCE-ID should be the id of a status.
+PAGE is the page number to retrieve.
+STREAM should be the output stream (default *STANDARD-OUTPUT*).
+
+SINCE-ID is not checked when PAGE is non-NIL."
   (let ((messages (m-messages :since-id (unless page since-id)
                               :page page)))
     (update-newest-id messages (messages-id *state*))
@@ -704,6 +772,13 @@
                       (since-id (sent-messages-id *state*))
                       page
                       (stream *standard-output*))
+  "Retrieves the direct messages sent by the authenticating user.
+
+SINCE-ID should be the id of a status.
+PAGE is the page number to retrieve.
+STREAM should be the output stream (default *STANDARD-OUTPUT*).
+
+SINCE-ID is not checked when PAGE is non-NIL."
   (let ((messages (m-messages-sent :since-id (unless page since-id)
                                    :page page)))
     (update-newest-id messages (sent-messages-id *state*))
@@ -716,6 +791,7 @@
 (defparameter *tinyurl-url* "http://tinyurl.com/api-create.php")
 
 (defun get-tinyurl (url)
+  "Get a TinyURL for the given URL. Uses the TinyURL API service."
   (multiple-value-bind (body status-code)
       (drakma:http-request *tinyurl-url*
                            :parameters `(("url" . ,url)))
