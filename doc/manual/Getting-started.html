@@ -1,0 +1,104 @@
+<html lang="en">
+<head>
+<title>Getting started - cl-twit</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="cl-twit">
+<meta name="generator" content="makeinfo 4.11">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="Download-and-installation.html#Download-and-installation" title="Download and installation">
+<link rel="next" href="Further-documentation.html#Further-documentation" title="Further documentation">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+Copyright (C) 2009 Chaitanya Gupta-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc    { font-variant:small-caps }
+  span.roman { font-family:serif; font-weight:normal; } 
+  span.sansserif { font-family:sans-serif; font-weight:normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<p>
+<a name="Getting-started"></a>
+Next:&nbsp;<a rel="next" accesskey="n" href="Further-documentation.html#Further-documentation">Further documentation</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="Download-and-installation.html#Download-and-installation">Download and installation</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr>
+</div>
+
+<h2 class="chapter">3 Getting started</h2>
+
+<p>Before you can use any other API functions, you need to login:
+
+<pre class="lisp">     ;; This makes a verify_credentials call to the twitter API
+     (twit:login "username" "password")
+</pre>
+   <p>To see your latest updates (equivalent to /home on twitter), enter
+
+<pre class="lisp">     (twit:timeline)
+     
+     ;; See just the five latest updates
+     (twit:timeline :count 5)
+</pre>
+   <p>To see a user's timeline (equivalent to a user's profile page),
+
+<pre class="lisp">     (twit:user-timeline "username")
+</pre>
+   <p>To create a new update,
+
+<pre class="lisp">     (twit:update "My latest tweet!")
+</pre>
+   <p>To see the latest @replies sent to you,
+
+<pre class="lisp">     (twit:@replies)
+</pre>
+   <p>To reply to a particular status, use reply-to or @reply-to.
+
+<pre class="lisp">     ;; reply-to sets the status-id of the status being replied to
+     (reply-to "123456789" "@username Here, have your reply!")
+     
+     ;; When using @reply-to, the status text below is transformed to
+     ;; "@username Here, have your reply!"
+     ;; i.e. cl-twit automatically determines the screenname of the sender
+     ;; of the status being replied to, and prepends it to the text
+     (@reply-to "123456789" "Here, have your reply!")
+</pre>
+   <p>To see the latest direct (private) messages sent to you,
+
+<pre class="lisp">     (twit:messages)
+</pre>
+   <p>To see the latest direct messages sent by you,
+
+<pre class="lisp">     (twit:sent-messages)
+</pre>
+   <p>To send a direct message to a user who is your &ldquo;friend&rdquo;,
+
+<pre class="lisp">     (twit:send-message "username" "Some message.")
+</pre>
+   <p>To get the TinyURL of a URL, use <code>get-tinyurl</code>. This can be used
+with <code>update</code>, <code>reply-to</code>, <code>@reply-to</code>, or
+<code>send-message</code>. All these functions actually take a <code>format</code>
+controlled string as the last required argument, and its corresponding
+args as the rest args to this string.
+
+<pre class="lisp">     ;; Returns a string containing the TinyURL of the given URL.
+     (twit:get-tinyurl "http://chaitanyagupta.com")
+     
+     ;; Using get-tinyurl with update
+     (twit:update "This is a cool URL: ~A" (twit:get-tinyurl "http://common-lisp.net"))
+</pre>
+   <p>Use <code>forget-state</code> to forget the current session state. This will
+make functions like <code>timeline</code>, <code>messages</code>, etc. to clear
+their last noticed status/message ids.
+
+<pre class="lisp">     (twit:forget-state)
+</pre>
+   </body></html>
+

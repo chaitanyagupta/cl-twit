@@ -1,0 +1,54 @@
+<html lang="en">
+<head>
+<title>Download and installation - cl-twit</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="cl-twit">
+<meta name="generator" content="makeinfo 4.11">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="Dependencies.html#Dependencies" title="Dependencies">
+<link rel="next" href="Getting-started.html#Getting-started" title="Getting started">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<!--
+Copyright (C) 2009 Chaitanya Gupta-->
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc    { font-variant:small-caps }
+  span.roman { font-family:serif; font-weight:normal; } 
+  span.sansserif { font-family:sans-serif; font-weight:normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<p>
+<a name="Download-and-installation"></a>
+Next:&nbsp;<a rel="next" accesskey="n" href="Getting-started.html#Getting-started">Getting started</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="Dependencies.html#Dependencies">Dependencies</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr>
+</div>
+
+<h2 class="chapter">2 Download and installation</h2>
+
+<p>Download the source from git:
+
+<pre class="example">     git clone git://github.com/chaitanyagupta/cl-twit.git
+</pre>
+   <p>Or, you can grab a tarball from the following URL (click on
+&ldquo;download&rdquo;):
+
+   <p><a href="http://github.com/chaitanyagupta/cl-twit/tree/master">http://github.com/chaitanyagupta/cl-twit/tree/master</a>
+
+   <p>After the download, symlink cl-twit.asd into your
+<code>ASDF:*CENTRAL-REGISTRY*</code> (or use whatever custom ASD loading
+mechanism you use) and you should be ready to go:
+
+<pre class="lisp">     (asdf:oos 'asdf:load-op :cl-twit)
+</pre>
+   </body></html>
+

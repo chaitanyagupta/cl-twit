@@ -1,0 +1,186 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename cl-twit.info
+@settitle cl-twit
+@c %**end of header
+
+@copying
+Copyright @copyright{} 2009 Chaitanya Gupta
+@end copying
+
+@titlepage
+@title cl-twit
+@author Chaitanya Gupta
+@end titlepage
+
+@ifnottex
+@node Top
+@top Introduction
+@end ifnottex
+
+@insertcopying
+
+cl-twit is a useless twitter client meant to destroy the productivity of Lisp programmers worldwide by bringing Twitter to the REPL. It implements wrappers for nearly all the methods provided by the Twitter API, but is particularly focussed towards those tasks which a Twitter user would encounter in his daily usage (get latest tweets, send update, reply to a particular tweet, etc.)
+
+Note that cl-twit is not the only Twitter client available for CL. You can use atleast two other clients, both named 'cl-twitter'. @uref{http://common-lisp.net/project/cl-twitter/,,One} is by Ian Eslick, and the @uref{http://seashellsandxml.co.uk/code/,,other} is by Chris Davies (trivia fact: both came out the same week as cl-twit).
+
+
+@menu
+* Dependencies::
+* Download and installation::
+* Getting started::
+* Further documentation::
+* The future::
+@end menu
+
+
+@node Dependencies
+@chapter Dependencies
+
+You will need to download and install the following libraries before
+you can use cl-twit:
+
+@itemize
+@item @uref{http://weitz.de/drakma,,Drakma} --- An HTTP client
+@c TODO: Fix the URL below:
+@item @uref{http://www.lichteblau.com/cxml-stp/,,cxml-stp} --- An XML parser
+@end itemize
+
+
+@node Download and installation
+@chapter Download and installation
+
+Download the source from git:
+
+@example
+git clone git://github.com/chaitanyagupta/cl-twit.git
+@end example
+
+Or, you can grab a tarball from the following URL (click on
+``download''):
+
+@uref{http://github.com/chaitanyagupta/cl-twit/tree/master}
+
+After the download, symlink cl-twit.asd into your
+@code{ASDF:*CENTRAL-REGISTRY*} (or use whatever custom ASD loading
+mechanism you use) and you should be ready to go:
+
+@lisp
+(asdf:oos 'asdf:load-op :cl-twit)
+@end lisp
+
+
+@node Getting started
+@chapter Getting started
+
+Before you can use any other API functions, you need to login:
+
+@lisp
+;; This makes a verify_credentials call to the twitter API
+(twit:login "username" "password")
+@end lisp
+
+To see your latest updates (equivalent to /home on twitter), enter
+
+@lisp
+(twit:timeline)
+
+;; See just the five latest updates
+(twit:timeline :count 5)
+@end lisp
+
+To see a user's timeline (equivalent to a user's profile page),
+
+@lisp
+(twit:user-timeline "username")
+@end lisp
+
+To create a new update,
+
+@lisp
+(twit:update "My latest tweet!")
+@end lisp
+
+To see the latest @@replies sent to you,
+
+@lisp
+(twit:@@replies)
+@end lisp
+
+To reply to a particular status, use reply-to or @@reply-to.
+
+@lisp
+;; reply-to sets the status-id of the status being replied to
+(reply-to "123456789" "@@username Here, have your reply!")
+
+;; When using @@reply-to, the status text below is transformed to
+;; "@@username Here, have your reply!"
+;; i.e. cl-twit automatically determines the screenname of the sender
+;; of the status being replied to, and prepends it to the text
+(@@reply-to "123456789" "Here, have your reply!")
+@end lisp
+
+To see the latest direct (private) messages sent to you,
+
+@lisp
+(twit:messages)
+@end lisp
+
+To see the latest direct messages sent by you,
+
+@lisp
+(twit:sent-messages)
+@end lisp
+
+To send a direct message to a user who is your ``friend'',
+
+@lisp
+(twit:send-message "username" "Some message.")
+@end lisp
+
+To get the TinyURL of a URL, use @code{get-tinyurl}. This can be used
+with @code{update}, @code{reply-to}, @code{@@reply-to}, or
+@code{send-message}. All these functions actually take a @code{format}
+controlled string as the last required argument, and its corresponding
+args as the rest args to this string.
+
+@lisp
+;; Returns a string containing the TinyURL of the given URL.
+(twit:get-tinyurl "http://chaitanyagupta.com")
+
+;; Using get-tinyurl with update
+(twit:update "This is a cool URL: ~A" (twit:get-tinyurl "http://common-lisp.net"))
+@end lisp
+
+Use @code{forget-state} to forget the current session state. This will
+make functions like @code{timeline}, @code{messages}, etc. to clear
+their last noticed status/message ids.
+
+@lisp
+(twit:forget-state)
+@end lisp
+
+
+@node Further documentation
+@chapter Further documentation
+
+The package @code{cl-twit} (nickname @code{twit}) exports a lot of
+symbols. Here's a brief summary:
+
+@itemize
+@item All the @code{status-*, user-*, message-*, rate-limit-*} are our object accessors.
+@item @code{twitter-error, http-error, xml-error} are our error conditions.
+@item @code{*user*} is bound to the currently logged in user.
+@item All the @code{m-*} functions are the wrappers over actual API calls to twitter. You can directly use these functions if none of the 'convenience' functions provide what you need.
+@item The rest are convenience functions to ease with using the Twitter API in the REPL. Check out their docstrings for more info.
+@end itemize
+
+
+@node The future
+@chapter The future
+
+If the author has enough time on his hands, and provided he still remains a Twitter user, cl-twit might get a persistent backend (using clsql). Minor changes to cl-twit based on the author's usage patterns should keep coming in.
+
+@bye
+
+
