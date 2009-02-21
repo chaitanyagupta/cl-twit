@@ -169,7 +169,7 @@ symbols. Here's a brief summary:
 
 @itemize
 @item All the @code{status-*, user-*, message-*, rate-limit-*} are our object accessors.
-@item @code{twitter-error, http-error, xml-error} are our error conditions.
+@item @code{twitter-error, twitter-simple-error, http-error, xml-error} are our error conditions.
 @item @code{*user*} is bound to the currently logged in user.
 @item All the @code{m-*} functions are the wrappers over actual API calls to twitter. You can directly use these functions if none of the 'convenience' functions provide what you need.
 @item The rest are convenience functions to ease with using the Twitter API in the REPL. Check out their docstrings for more info.

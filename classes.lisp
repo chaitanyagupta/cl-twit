@@ -120,6 +120,9 @@
 (define-condition twitter-error (error)
   ())
 
+(define-condition twitter-simple-error (twitter-error simple-error)
+  ())
+
 (define-condition http-error (twitter-error)
   ((status-code :reader http-status-code
                 :initarg :status-code)
@@ -128,6 +131,14 @@
    (body :reader http-body
          :initarg :body)))
 
+(defmethod print-object ((x http-error) stream)
+  (if (null *print-escape*)
+      (format stream "~A returned by ~A~%Body: ~A"
+              (http-status-code x)
+              (http-url x)
+              (http-body x))
+      (call-next-method)))
+
 (define-condition xml-error (twitter-error)
   ((reason :reader xml-error-reason
            :initarg :reason)
@@ -135,6 +146,14 @@
              :initarg :deadline)
    (text :reader xml-error-text
          :initarg :text)))
+
+(defmethod print-object ((x xml-error) stream)
+  (if (null *print-escape*)
+      (format stream "Reason: ~A~%Deadline: ~A~%Text: ~A"
+              (xml-error-reason x)
+              (xml-error-deadline x)
+              (xml-error-text x))
+      (call-next-method)))
 
 ;;; An 'id' method for our objects
 

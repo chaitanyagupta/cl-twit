@@ -29,9 +29,8 @@
 (cl:in-package #:cl-twit)
 
 ;;; TODOs:
-;;;; TODO: Documentation
 ;;;; TODO: .cl-twit.lisp
-;;;; TODO: More info in errors
+;;;; TODO: Ease of @?reply-to use -- TEST
 ;;;; TODO: Methods to be tested: update- (?)
 ;;;; TODO: Easily switch context between profiles (?)
 ;;;; TODO: Should we parse-status for the user (?)
@@ -520,7 +519,8 @@
   (messages-id nil)
   (sent-messages-id nil)
   (session-statuses (make-hash-table :test #'equalp))
-  (session-messages (make-hash-table :test #'equalp)))
+  (session-messages (make-hash-table :test #'equalp))
+  (session-last-displayed-statuses nil))
 
 (defvar *user* nil
   "Bound to the USER object of the current, authenticated user.")
@@ -602,7 +602,8 @@ Must be specialized for NULL, STATUS and MESSAGE."))
           (user-name (status-user status))
           (user-screen-name (status-user status))
           (status-text status))
-  (format stream "~&~A~:[~; (truncated)~] at ~A from ~A~%~%"
+  (format stream "~&#~A (id ~A)~:[~; (truncated)~] at ~A from ~A~%~%"
+          n
           (status-id status)
           (status-truncated status)
           (status-created-at status)
@@ -623,7 +624,7 @@ Must be specialized for NULL, STATUS and MESSAGE."))
   (when finalp
     (format stream "~&Message stream ends.~%")))
 
-(defun display-items (items stream &aux (n -1))
+(defun display-items (items stream &aux (n 0))
   "Displays a list of ITEMS using DISPLAY-ITEM to output STREAM."
   (labels ((!display-items (items &optional (initialp t))
              (cond
@@ -637,20 +638,42 @@ Must be specialized for NULL, STATUS and MESSAGE."))
     (!display-items items)
     items))
 
+(defun display-statuses (statuses stream)
+  (display-items statuses stream)
+  (setf (session-last-displayed-statuses *state*) statuses))
+
+(defun last-displayed-statuses ()
+  "Return the last status items displayed in this session."
+  (session-last-displayed-statuses *state*))
+
 (defun update (fmt &rest args)
   "Update your status. FMT is a FORMAT string, and ARGS are its
 corresponding arguments."
   (store-status (m-update (apply #'format nil fmt args))))
 
 (defun find-status (id)
-  "Find status with ID. If it is not present locally, throws a
-CERROR. If the user chooses to continue, get the status from twitter."
-  (setf id (format nil "~A" id))
-  (or (gethash id (session-statuses *state*))
-      (progn
-        (cerror "Couldn't find status with ID locally. Ask twitter?"
-                'twitter-error)
-        (store-status (ignore-errors (m-show id))))))
+  "Find a particular status.
+
+If ID is a NUMBER, the (zero-based) index with for this position is
+checked for in the last displayed statuses, and if present, that
+status is returned. If no status is found at this position, an error
+is signalled.
+
+If ID is a string, a status with the same status-id as ID is searcehd
+for in the local cache. If it is not present locally, a CERROR is
+signalled. If the user chooses to continue, get the status from
+twitter."
+  (etypecase id
+    (number (or (nth id (session-last-displayed-statuses *state*))
+                (error 'twitter-simple-error
+                       :format-control "Can't find status #~A in last displayed statuses."
+                       :format-arguments (list id))))
+    (string
+     (or (gethash id (session-statuses *state*))
+         (progn
+           (cerror "Couldn't find status with ID locally. Ask twitter?"
+                   'twitter-error)
+           (store-status (ignore-errors (m-show id))))))))
 
 (defun reply-to (status-id fmt &rest args)
   "Send a reply to a particular status with STATUS-ID. FMT and ARGS
@@ -705,7 +728,7 @@ SINCE-ID is not checked when PAGE is non-NIL."
                    :count count
                    :page page)))
     (update-newest-id statuses (friends-timeline-id *state*))
-    (display-items statuses stream)
+    (display-statuses statuses stream)
     (store-statuses statuses)))
 
 (defun user-timeline (user &key
@@ -731,7 +754,7 @@ SINCE-ID is not checked when PAGE is non-NIL."
                    :count count
                    :page page)))
     (update-newest-id statuses (gethash user (user-timeline-ids *state*)))
-    (display-items statuses stream)
+    (display-statuses statuses stream)
     (store-statuses statuses)))
 
 (defun @replies (&key
@@ -748,7 +771,7 @@ SINCE-ID is not checked when PAGE is non-NIL."
   (let ((statuses (m-replies :since-id (unless page since-id)
                              :page page)))
     (update-newest-id statuses (replies-id *state*))
-    (display-items statuses stream)
+    (display-statuses statuses stream)
     (store-statuses statuses)))
 
 (defun messages (&key

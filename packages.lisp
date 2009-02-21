@@ -88,6 +88,7 @@
    #:rate-limit-hourly-limit
    ;; Errors
    #:twitter-error
+   #:twitter-simple-error
    #:http-error
    #:http-status-code
    #:http-url
@@ -145,6 +146,7 @@
    #:send-message
    #:display-item
    #:display-items
+   #:last-displayed-statuses
    #:timeline
    #:user-timeline
    #:@replies
