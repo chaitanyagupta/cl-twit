@@ -283,8 +283,9 @@
      in-reply-to-status-id)
   (assert (and (not (null status)) (<= (length status) *max-text-length*))
           nil
-          "STATUS must be non-NIL and its length must not be greater than ~A."
-          *max-text-length*)
+          "STATUS must be non-NIL and its length must not be greater than ~A. Current length: ~A"
+          *max-text-length*
+          (length status))
   (let* ((body (twitter-request "/statuses/update.xml"
                              :method :post)))
     (parse-status (safe-xml-root body))))
@@ -349,8 +350,9 @@
      text)
   (assert (and (not (null text)) (<= (length text) *max-text-length*))
           nil
-          "TEXT must be non-NIL and its length must not be greater than ~A."
-          *max-text-length*)
+          "TEXT must be non-NIL and its length must not be greater than ~A. Current length: ~A"
+          *max-text-length*
+          (length text))
   (parse-message
    (safe-xml-root (twitter-request "/direct_messages/new.xml"
                                    :method :post))))
