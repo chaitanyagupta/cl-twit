@@ -134,7 +134,8 @@
    #:m-block-destroy
    #:m-test
    ;; Our convenience operators for interactive use
-   #:*user*
+   #:*username*
+   #:*password*
    #:login
    #:logout
    #:forget-state

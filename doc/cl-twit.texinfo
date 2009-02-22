@@ -20,35 +20,33 @@ Copyright @copyright{} 2009 Chaitanya Gupta
 
 @insertcopying
 
-cl-twit is a useless twitter client meant to destroy the productivity of Lisp programmers worldwide by bringing Twitter to the REPL. It implements wrappers for nearly all the methods provided by the Twitter API, but is particularly focussed towards those tasks which a Twitter user would encounter in his daily usage (get latest tweets, send update, reply to a particular tweet, etc.)
+cl-twit is meant for that small bunch of Common Lisp programmers with lots and lots of free time on their hands who also use Twitter. It implements wrappers for nearly all the methods provided by the Twitter API, but is particularly focussed towards those tasks which a Twitter user would encounter in his daily usage (get latest tweets, send update, reply to a particular tweet, etc.). It comes with a @uref{http://www.opensource.org/licenses/bsd-license.php,,BSD-style license}.
 
-Note that cl-twit is not the only Twitter client available for CL. You can use atleast two other clients, both named 'cl-twitter'. @uref{http://common-lisp.net/project/cl-twitter/,,One} is by Ian Eslick, and the @uref{http://seashellsandxml.co.uk/code/,,other} is by Chris Davies (trivia fact: both came out the same week as cl-twit).
+If you want to send feedback or comments, send an email to @code{mail at chaitanyagupta.com}, or ping @code{@@chaitanya_gupta} on Twitter.
 
 
 @menu
-* Dependencies::
 * Download and installation::
-* Getting started::
+* .cl-twit.lisp::
+* Authentication and state::
+* Status messages::
+* Direct messages::
+* Tiny URLs::
 * Further documentation::
 * The future::
 @end menu
 
 
-@node Dependencies
-@chapter Dependencies
+@node Download and installation
+@chapter Download and installation
 
-You will need to download and install the following libraries before
-you can use cl-twit:
+cl-twit depends on the following two libraries:
 
 @itemize
 @item @uref{http://weitz.de/drakma,,Drakma} --- An HTTP client
 @c TODO: Fix the URL below:
 @item @uref{http://www.lichteblau.com/cxml-stp/,,cxml-stp} --- An XML parser
 @end itemize
-
-
-@node Download and installation
-@chapter Download and installation
 
 Download the source from git:
 
@@ -70,15 +68,45 @@ mechanism you use) and you should be ready to go:
 @end lisp
 
 
-@node Getting started
-@chapter Getting started
+@node .cl-twit.lisp
+@chapter .cl-twit.lisp
+
+The contents of the file ~/.cl-twit.lisp, if it exists, are @code{READ} after cl-twit has been loaded. I usually use it to set my twitter username and password.
+
+@lisp
+(setf twit:*username* "chaitanya_gupta")
+(setf twit:*password* "password")
+@end lisp
+
+
+@node Authentication and state
+@chapter Authentication and state
 
 Before you can use any other API functions, you need to login:
 
 @lisp
-;; This makes a verify_credentials call to the twitter API
-(twit:login "username" "password")
+;; If the first argument is non-NIL, a verify_credentials call is made
+;; to twitter. The username and password are assumed to be
+;; twit:*username* and twit:*password* by default.
+(twit:login t)
+
+;; You can also explicitly specify the username and password using
+;; twit:login
+(twit:login t "username" "password")
 @end lisp
+
+Use @code{(twit:forget-state)} to forget the current session state. This
+will clear the last noticed status/message ids for functions like
+@code{timeline}, @code{messages}, etc. @code{(twit:logout)} will also
+clear the username and password.
+
+@code{(twit:m-rate-limit-status)} returns a rate-limit object which
+gives the number of hits remaining this hour, the reset time for the
+rate limit counter, etc.
+
+
+@node Status messages
+@chapter Status messages
 
 To see your latest updates (equivalent to /home on twitter), enter
 
@@ -107,18 +135,33 @@ To see the latest @@replies sent to you,
 (twit:@@replies)
 @end lisp
 
-To reply to a particular status, use reply-to or @@reply-to.
+@code{(twit:last-displayed-statuses)} displays the list of statuses
+returned by the last call to either @code{twit:timeline},
+@code{twit:user-timeline} or @code{twit:@@replies}.
+
+To reply to a particular status, use reply-to or @@reply-to. Note that
+the message string is used as a @code{format} control string. The
+corresponding @code{format} args can be passed as the rest args to
+these functions.
 
 @lisp
-;; reply-to sets the status-id of the status being replied to
-(reply-to "123456789" "@@username Here, have your reply!")
+;; reply to the 3rd status from the last displayed list of statuses
+(twit:reply-to 2 "@@username Here, have your reply!")
+
+;; reply to the status with status-id "123456789"
+(twit:reply-to "123456789" "@@username Here, have your reply!")
+
+;; @@reply-to automatically determines the screenname of the sender of
+;; the status being replied to, and prepends it to the text
 
 ;; When using @@reply-to, the status text below is transformed to
 ;; "@@username Here, have your reply!"
-;; i.e. cl-twit automatically determines the screenname of the sender
-;; of the status being replied to, and prepends it to the text
-(@@reply-to "123456789" "Here, have your reply!")
+(twit:@@reply-to "123456789" "Here, have your reply!")
 @end lisp
+
+
+@node Direct messages
+@chapter Direct messages
 
 To see the latest direct (private) messages sent to you,
 
@@ -138,7 +181,11 @@ To send a direct message to a user who is your ``friend'',
 (twit:send-message "username" "Some message.")
 @end lisp
 
-To get the TinyURL of a URL, use @code{get-tinyurl}. This can be used
+
+@node Tiny URLs
+@chapter Tiny URLs
+
+To get the @uref{http://tinyurl.com,,TinyURL} of a URL, use @code{get-tinyurl}. This can be used
 with @code{update}, @code{reply-to}, @code{@@reply-to}, or
 @code{send-message}. All these functions actually take a @code{format}
 controlled string as the last required argument, and its corresponding
@@ -149,15 +196,7 @@ args as the rest args to this string.
 (twit:get-tinyurl "http://chaitanyagupta.com")
 
 ;; Using get-tinyurl with update
-(twit:update "This is a cool URL: ~A" (twit:get-tinyurl "http://common-lisp.net"))
-@end lisp
-
-Use @code{forget-state} to forget the current session state. This will
-make functions like @code{timeline}, @code{messages}, etc. to clear
-their last noticed status/message ids.
-
-@lisp
-(twit:forget-state)
+(twit:update "This is a cool place: ~A" (twit:get-tinyurl "http://common-lisp.net"))
 @end lisp
 
 
@@ -170,7 +209,7 @@ symbols. Here's a brief summary:
 @itemize
 @item All the @code{status-*, user-*, message-*, rate-limit-*} are our object accessors.
 @item @code{twitter-error, twitter-simple-error, http-error, xml-error} are our error conditions.
-@item @code{*user*} is bound to the currently logged in user.
+@item @code{*username*} and @code{*password*} are bound to the username and password for the current user.
 @item All the @code{m-*} functions are the wrappers over actual API calls to twitter. You can directly use these functions if none of the 'convenience' functions provide what you need.
 @item The rest are convenience functions to ease with using the Twitter API in the REPL. Check out their docstrings for more info.
 @end itemize
@@ -179,7 +218,7 @@ symbols. Here's a brief summary:
 @node The future
 @chapter The future
 
-If the author has enough time on his hands, and provided he still remains a Twitter user, cl-twit might get a persistent backend (using clsql). Minor changes to cl-twit based on the author's usage patterns should keep coming in.
+If the author has enough time on his hands, and provided he still finds cl-twit useful, it might get a persistent backend (using clsql). Minor changes to cl-twit based on the author's usage patterns should keep coming in.
 
 @bye
 

@@ -29,13 +29,10 @@
 (cl:in-package #:cl-twit)
 
 ;;; TODOs:
-;;;; TODO: .cl-twit.lisp
-;;;; TODO: Ease of @?reply-to use -- TEST
 ;;;; TODO: Methods to be tested: update- (?)
 ;;;; TODO: Easily switch context between profiles (?)
 ;;;; TODO: Should we parse-status for the user (?)
 ;;;; TODO: Epoch for twitter's Unix time (?)
-;;;; TODO: Better return type handling for twitter-methods (?)
 
 ;;; Utils
 
@@ -170,8 +167,11 @@
 
 (defparameter *base-url* "http://www.twitter.com")
 
-(defvar *username* nil)
-(defvar *password* nil)
+(defvar *username* nil
+  "The user's account username")
+
+(defvar *password* nil
+  "The user's account password")
 
 (defconstant +http-ok+ 200)
 
@@ -522,43 +522,36 @@
   (session-messages (make-hash-table :test #'equalp))
   (session-last-displayed-statuses nil))
 
-(defvar *user* nil
-  "Bound to the USER object of the current, authenticated user.")
-
-(defun login (username password)
-  "Authenticate the given USERNAME and PASSWORD using the
-verify_credentials. Sets *USER* to this user. Also clears any existing
-session state."
-  (let ((user (let ((*username* username)
-                    (*password* password))
-                (m-verify-credentials))))
-    (setf *username* username
-          *password* password
-          *state* (make-session-state)
-          *user* user)))
+(defun login (authenticatep &optional (username *username*) (password *password*))
+  "Sets the *USERNAME* and *PASSWORD* to USERNAME and PASSWORD
+respectively. Also authenticate the given USERNAME and PASSWORD using
+the verify_credentials service if AUTHENTICATEP is non-NIL. Also
+clears any existing session state."
+  (setf *username* username
+        *password* password
+        *state* (make-session-state))
+  (when authenticatep
+    (m-verify-credentials)))
 
 (defun logout ()
   "Clear user information and session state."
   (setf *username* nil
         *password* nil
-        *state* nil
-        *user* nil))
+        *state* nil))
 
 (defun forget-state ()
   "Just clear the existing session state. Don't clear user
 authentication information."
   (setf *state* (make-session-state)))
 
-(defmacro with-session ((username password &key (loginp t)) &body body)
+(defmacro with-session ((username password &key (authenticatep t)) &body body)
   "Authenticate the USERNAME and PASSWORD, and set up a fresh session
-state for this user. If LOGINP is NIL, then don't automatically
-call (LOGIN)."
-  `(let ((*username* ,username)
-         (*password* ,password)
-         (*state* (make-session-state))
-         (*user* nil))
-     , (when loginp
-         `(login *username* *password*))
+state for this user. If AUTHENTICATEP is NIL, then don't automatically
+authenticate the credentials on twitter."
+  `(let ((*username*)
+         (*password*)
+         (*state*))
+     , `(login ,authenticatep ,username ,password)
      ,@body))
 
 (defun store-status (status)
@@ -624,7 +617,7 @@ Must be specialized for NULL, STATUS and MESSAGE."))
   (when finalp
     (format stream "~&Message stream ends.~%")))
 
-(defun display-items (items stream &aux (n 0))
+(defun display-items (items stream &aux (n -1))
   "Displays a list of ITEMS using DISPLAY-ITEM to output STREAM."
   (labels ((!display-items (items &optional (initialp t))
              (cond
@@ -675,23 +668,25 @@ twitter."
                    'twitter-error)
            (store-status (ignore-errors (m-show id))))))))
 
-(defun reply-to (status-id fmt &rest args)
+(defun reply-to (id fmt &rest args)
   "Send a reply to a particular status with STATUS-ID. FMT and ARGS
 are the format-control string and args."
   (store-status
    (m-update (apply #'format nil fmt args)
-             :in-reply-to-status-id status-id)))
+             :in-reply-to-status-id (etypecase id
+                                      (number (status-id (find-status id)))
+                                      (string id)))))
 
-(defun @reply-to (status-id fmt &rest args)
+(defun @reply-to (id fmt &rest args)
   "Send a reply to a particular status with STATUS-ID. FMT and ARGS
 are the format-control string and args.
 
 This function prepends the @username of the status's sender to the
 final text."
   (let ((fmt (format nil "@~A ~A"
-                     (user-screen-name (status-user (find-status status-id)))
+                     (user-screen-name (status-user (find-status id)))
                      fmt)))
-    (reply-to status-id (apply #'format nil fmt args))))
+    (reply-to id (apply #'format nil fmt args))))
 
 (defun send-message (user fmt &rest args)
   "Send a direct message to USER (screenname or id) with
@@ -824,6 +819,15 @@ SINCE-ID is not checked when PAGE is non-NIL."
                :status-code status-code
                :url url
                :body body))))
+
+;;; Load customizations, if any
+;;; Code thanks to asdf-install
+
+(eval-when (:load-toplevel :execute)
+  (let* ((file (probe-file (merge-pathnames
+			    (make-pathname :name ".cl-twit.lisp")
+			    (truename (user-homedir-pathname))))))
+    (when file (load file))))
 
 
 
