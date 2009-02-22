@@ -1,1 +1,10 @@
-See doc/manual/index.html for the documentation.
+cl-twit -- Bringing twitter to the CL REPL.
+
+Read the online manual at
+http://chaitanyagupta.com/lisp/cl-twit/manual/index.html.
+
+Or Make your own with 'cd doc && make' (must have makeinfo installed).
+
+Chaitanya Gupta
+(mail@chaitanyagupta.com)
+

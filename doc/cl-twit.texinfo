@@ -20,7 +20,7 @@ Copyright @copyright{} 2009 Chaitanya Gupta
 
 @insertcopying
 
-cl-twit is meant for that small bunch of Common Lisp programmers with lots and lots of free time on their hands who also use Twitter. It implements wrappers for nearly all the methods provided by the Twitter API, but is particularly focussed towards those tasks which a Twitter user would encounter in his daily usage (get latest tweets, send update, reply to a particular tweet, etc.). It comes with a @uref{http://www.opensource.org/licenses/bsd-license.php,,BSD-style license}.
+cl-twit is meant for that small bunch of Common Lisp programmers with lots and lots of free time on their hands who also use Twitter. It implements wrappers for nearly all the methods provided by the Twitter API, but is particularly focussed towards those tasks which a Twitter user would encounter in his daily usage (get latest tweets, send update, reply to a particular tweet, etc.). It comes with a @uref{http://www.opensource.org/licenses/bsd-license.php,BSD-style license}.
 
 If you want to send feedback or comments, send an email to @code{mail at chaitanyagupta.com}, or ping @code{@@chaitanya_gupta} on Twitter.
 
@@ -43,9 +43,9 @@ If you want to send feedback or comments, send an email to @code{mail at chaitan
 cl-twit depends on the following two libraries:
 
 @itemize
-@item @uref{http://weitz.de/drakma,,Drakma} --- An HTTP client
+@item @uref{http://weitz.de/drakma,Drakma} --- An HTTP client
 @c TODO: Fix the URL below:
-@item @uref{http://www.lichteblau.com/cxml-stp/,,cxml-stp} --- An XML parser
+@item @uref{http://www.lichteblau.com/cxml-stp/,cxml-stp} --- An XML parser
 @end itemize
 
 Download the source from git:
@@ -185,7 +185,7 @@ To send a direct message to a user who is your ``friend'',
 @node Tiny URLs
 @chapter Tiny URLs
 
-To get the @uref{http://tinyurl.com,,TinyURL} of a URL, use @code{get-tinyurl}. This can be used
+To get the @uref{http://tinyurl.com,TinyURL} of a URL, use @code{get-tinyurl}. This can be used
 with @code{update}, @code{reply-to}, @code{@@reply-to}, or
 @code{send-message}. All these functions actually take a @code{format}
 controlled string as the last required argument, and its corresponding
