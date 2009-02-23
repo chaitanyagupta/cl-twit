@@ -145,6 +145,7 @@
    #:reply-to
    #:@reply-to
    #:send-message
+   #:*default-page-size*
    #:display-item
    #:display-items
    #:last-displayed-statuses

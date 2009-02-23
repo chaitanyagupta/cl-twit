@@ -576,6 +576,9 @@ authenticate the credentials on twitter."
   (when items
     (apply #'max (mapcar (compose #'parse-integer #'id) items))))
 
+(defvar *default-page-size* 5
+  "Number of entries to show per page when displaying items.")
+
 (defgeneric display-item (x stream n initialp finalp)
   (:documentation "Generic display function for cl-twit objects.
 
@@ -619,14 +622,22 @@ Must be specialized for NULL, STATUS and MESSAGE."))
   (when finalp
     (format stream "~&Message stream ends.~%")))
 
-(defun display-items (items stream &aux (n -1))
-  "Displays a list of ITEMS using DISPLAY-ITEM to output STREAM."
+(defun display-items (items stream &key (page *default-page-size*)
+                      &aux (n -1) (length (length items)))
+  "Displays a list of ITEMS using DISPLAY-ITEM to output STREAM. PAGE,
+if non-NIL, should be the number of items to display per page. Its
+default is *DEFAULT-PAGE-SIZE*."
   (labels ((!display-items (items &optional (initialp t))
              (cond
                ((null items)
                 (display-item nil stream 0 t t))
                ((rest items)
                 (display-item (first items) stream (incf n) initialp nil)
+                (when (and page
+                           (/= n -1)
+                           (zerop (mod (1+ n) page)))
+                  (unless (y-or-n-p "~&Continue? --~A/~A--" (1+ n) length)
+                    (return-from display-items items)))
                 (!display-items (rest items) nil))
                (t
                 (display-item (first items) stream (incf n) initialp t)))))
