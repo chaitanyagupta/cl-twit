@@ -207,9 +207,10 @@ The package @code{cl-twit} (nickname @code{twit}) exports a lot of
 symbols. Here's a brief summary:
 
 @itemize
+@item @code{*username*} and @code{*password*} are bound to the username and password for the current user.
 @item All the @code{status-*, user-*, message-*, rate-limit-*} are our object accessors.
 @item @code{twitter-error, twitter-simple-error, http-error, xml-error} are our error conditions.
-@item @code{*username*} and @code{*password*} are bound to the username and password for the current user.
+@item @code{*default-page-size*} is the number of items to display per page. It can also be @code{NIL}.
 @item All the @code{m-*} functions are the wrappers over actual API calls to twitter. You can directly use these functions if none of the 'convenience' functions provide what you need.
 @item The rest are convenience functions to ease with using the Twitter API in the REPL. Check out their docstrings for more info.
 @end itemize
