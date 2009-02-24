@@ -166,6 +166,7 @@
 ;;; Methods base
 
 (defparameter *base-url* "http://www.twitter.com")
+(defparameter *source* "cltwit")
 
 (defvar *username* nil
   "The user's account username")
@@ -287,7 +288,9 @@
           *max-text-length*
           (length status))
   (let* ((body (twitter-request "/statuses/update.xml"
-                             :method :post)))
+                                :method :post
+                                :parameters (cons (cons "source" *source*)
+                                                  *twitter-parameters*))))
     (parse-status (safe-xml-root body))))
 
 (def-twitter-method m-replies
