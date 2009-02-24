@@ -599,12 +599,12 @@ Must be specialized for NULL, STATUS and MESSAGE."))
 (defmethod display-item ((status status) stream n initialp finalp)
   (when initialp
     (format stream "~&Status stream starts: ~%~%"))
-  (format stream "~&~A (~A): ~A~%"
+  (format stream "~&#~A ~A (~A): ~A~%"
+          n
           (user-name (status-user status))
           (user-screen-name (status-user status))
           (status-text status))
-  (format stream "~&#~A (id ~A)~:[~; (truncated)~] at ~A from ~A~%~%"
-          n
+  (format stream "~&~A~:[~; (truncated)~] at ~A from ~A~%~%"
           (status-id status)
           (status-truncated status)
           (status-created-at status)
