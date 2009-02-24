@@ -20,7 +20,7 @@ Copyright @copyright{} 2009 Chaitanya Gupta
 
 @insertcopying
 
-cl-twit is meant for that small bunch of Common Lisp programmers with lots and lots of free time on their hands who also use Twitter. It implements wrappers for nearly all the methods provided by the Twitter API, but is particularly focussed towards those tasks which a Twitter user would encounter in his daily usage (get latest tweets, send update, reply to a particular tweet, etc.). It comes with a @uref{http://www.opensource.org/licenses/bsd-license.php,BSD-style license}.
+cl-twit is meant for that small bunch of Common Lisp programmers with lots and lots of free time on their hands who also use Twitter. It implements wrappers for nearly all the methods provided by Twitter's @uref{http://apiwiki.twitter.com/REST+API+Documentation,REST API}, but is particularly focussed towards those tasks which a Twitter user would encounter in his daily usage (get latest tweets, send update, reply to a particular tweet, etc.). It comes with a @uref{http://www.opensource.org/licenses/bsd-license.php,BSD-style license}.
 
 If you want to send feedback or comments, send an email to @code{mail at chaitanyagupta.com}, or ping @code{@@chaitanya_gupta} on Twitter.
 
