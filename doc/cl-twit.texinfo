@@ -211,6 +211,7 @@ symbols. Here's a brief summary:
 @item All the @code{status-*, user-*, message-*, rate-limit-*} are our object accessors.
 @item @code{twitter-error, twitter-simple-error, http-error, xml-error} are our error conditions.
 @item @code{*default-page-size*} is the number of items to display per page. It can also be @code{NIL}.
+@item @code{*reverse-display-items-p*}, if non-NIL (default @code{T}), reverses the items from the order in which they were received from Twitter, before displaying them. This makes it easier to view the items in ``converstation-style'', so that replies show up after the original status.
 @item All the @code{m-*} functions are the wrappers over actual API calls to twitter. You can directly use these functions if none of the 'convenience' functions provide what you need.
 @item The rest are convenience functions to ease with using the Twitter API in the REPL. Check out their docstrings for more info.
 @end itemize

@@ -586,6 +586,9 @@ authenticate the credentials on twitter."
 (defvar *default-page-size* 5
   "Number of entries to show per page when displaying items.")
 
+(defvar *reverse-display-items-p* t
+  "Default value for REVERSEP option to DISPLAY-ITEMS.")
+
 (defgeneric display-item (x stream n initialp finalp)
   (:documentation "Generic display function for cl-twit objects.
 
@@ -629,11 +632,19 @@ Must be specialized for NULL, STATUS and MESSAGE."))
   (when finalp
     (format stream "~&Message stream ends.~%")))
 
-(defun display-items (items stream &key (page *default-page-size*)
+(defun display-items (items stream &key
+                      (page *default-page-size*)
+                      (reversep *reverse-display-items-p*)
                       &aux (n -1) (length (length items)))
-  "Displays a list of ITEMS using DISPLAY-ITEM to output STREAM. PAGE,
-if non-NIL, should be the number of items to display per page. Its
-default is *DEFAULT-PAGE-SIZE*."
+  "Displays a list of ITEMS using DISPLAY-ITEM to output STREAM. 
+
+PAGE, if non-NIL, should be the number of items to display per
+page. Its default value is *DEFAULT-PAGE-SIZE*.
+
+If REVERSEP is non-NIL, reverse the order of the items before
+displaying them. Its default value is *REVERSE-DISPLAY-ITEMS-P*."
+  (when reversep
+    (setf items (reverse items)))
   (labels ((!display-items (items &optional (initialp t))
              (cond
                ((null items)

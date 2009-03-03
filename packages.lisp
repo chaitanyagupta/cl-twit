@@ -146,6 +146,7 @@
    #:@reply-to
    #:send-message
    #:*default-page-size*
+   #:*reverse-display-items-p*
    #:display-item
    #:display-items
    #:last-displayed-statuses
