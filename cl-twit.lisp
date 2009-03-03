@@ -178,16 +178,20 @@
 
 (defvar *twitter-parameters* nil)
 
+(defvar *twitter-external-format* :utf-8
+  "The external format to be used for HTTP requests.")
+
 (defun twitter-request (path &rest args)
   (let ((url (concatenate 'string *base-url* path)))
     (multiple-value-bind (body status-code)
-        (apply #'drakma:http-request
-               url
-               (append (and *username* *password*
-                            (list :basic-authorization (list *username* *password*)))
-                       (unless (getf args :parameters)
-                         (list :parameters *twitter-parameters*))
-                       args))
+        (let ((drakma:*drakma-default-external-format* *twitter-external-format*))
+          (apply #'drakma:http-request
+                 url
+                 (append (and *username* *password*
+                              (list :basic-authorization (list *username* *password*)))
+                         (unless (getf args :parameters)
+                           (list :parameters *twitter-parameters*))
+                         args)))
       (if (= status-code +http-ok+)
           body
           (error 'http-error
