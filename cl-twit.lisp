@@ -664,7 +664,10 @@ displaying them. Its default value is *REVERSE-DISPLAY-ITEMS-P*."
 
 (defun display-statuses (statuses stream)
   (display-items statuses stream)
-  (setf (session-last-displayed-statuses *state*) statuses))
+  (setf (session-last-displayed-statuses *state*)
+        (if *reverse-display-items-p*
+            (reverse statuses)
+            statuses)))
 
 (defun last-displayed-statuses ()
   "Return the last status items displayed in this session."
