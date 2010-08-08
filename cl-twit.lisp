@@ -47,6 +47,27 @@
         (funcall fn1 (funcall (apply #'compose fns) x)))
       fn1))
 
+;;; Parse dates
+
+(defvar *month-short-names* (list "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
+
+(defun parse-response-date (string)
+  "The date-time format in Twitter's API responses have a weird custom
+format. Parses Twitter's custom date, given in STRING, and returns its
+representation in universal time."
+  (destructuring-bind (dow month-name date time timezone year)
+      (cl-ppcre:split " " string)
+      (declare (ignore dow))
+    (destructuring-bind (hh mm ss)
+        (cl-ppcre:split ":" time)
+      (encode-universal-time (parse-integer ss)
+                             (parse-integer mm)
+                             (parse-integer hh)
+                             (parse-integer date)
+                             (1+ (position month-name *month-short-names* :test #'string-equal))
+                             (parse-integer year)
+                             (parse-integer timezone)))))
+
 ;;; Parse XML
 
 (defun xml-root (raw-xml)
@@ -73,7 +94,7 @@
 (defun parse-status (status-node)
   (flet ((!child-value (name)
            (child-value status-node name)))
-    (make-status :created-at (!child-value "created_at")
+    (make-status :created-at (parse-response-date (!child-value "created_at"))
                  :id (!child-value "id")
                  :text (!child-value "text")
                  :source (!child-value "source")
@@ -122,7 +143,7 @@
      :profile-sidebar-fill-color (!child-value "profile_sidebar_fill_color")
      :profile-sidebar-border-color (!child-value "profile_sidebar_border_color")
      :friends-count (parse-integer (!child-value "friends_count"))
-     :created-at (!child-value "created_at")
+     :created-at (parse-response-date (!child-value "created_at"))
      :favourites-count (parse-integer (!child-value "favourites_count"))
      :utc-offset (parse-integer (!child-value "utc_offset") :junk-allowed t)
      :time-zone (!child-value "time_zone")
@@ -140,7 +161,7 @@
      :sender-id (!child-value "sender_id")
      :text (!child-value "text")
      :recipient-id (!child-value "recipient_id")
-     :created-at (!child-value "created_at")
+     :created-at (parse-response-date (!child-value "created_at"))
      :sender-screen-name (!child-value "sender_screen_name")
      :recipient-screen-name (!child-value "recipient_screen_name")
      :sender (when-let (user-node (stp:find-child-if (stp:of-name "sender") message-node))
