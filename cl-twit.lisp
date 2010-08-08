@@ -165,7 +165,7 @@
 
 ;;; Methods base
 
-(defparameter *base-url* "http://www.twitter.com")
+(defparameter *base-url* "http://api.twitter.com/1")
 (defparameter *source* "cltwit")
 
 (defvar *username* nil
